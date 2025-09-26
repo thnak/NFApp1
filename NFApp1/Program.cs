@@ -20,6 +20,11 @@ namespace NFApp1
         // The counter variable for button presses.
         private static int _sPressCount = 0;
         // ---
+        private const string MqttBrokerAddress = "broker.hivemq.com";
+        private const string MqttTopic = "device/button/count";
+
+        private const string WifiSsid = "";
+        private const string WifiPassword = "";
 
         public static void Main()
         {
@@ -32,7 +37,7 @@ namespace NFApp1
             Thread.Sleep(2000); // Wait for scan to complete
             foreach (var net in wifi.NetworkReport.AvailableNetworks)
             {
-                if (net.Ssid == "YOUR_SSID")
+                if (net.Ssid == WifiSsid)
                 {
                     targetNetwork = net;
                     break;
@@ -43,7 +48,7 @@ namespace NFApp1
                 Debug.WriteLine("Target WiFi network not found!");
                 return;
             }
-            var result = wifi.Connect(targetNetwork, WifiReconnectionKind.Automatic, "YOUR_PASSWORD");
+            var result = wifi.Connect(targetNetwork, WifiReconnectionKind.Automatic, WifiPassword);
             if (result.ConnectionStatus != WifiConnectionStatus.Success)
             {
                 Debug.WriteLine($"WiFi connection failed: {result.ConnectionStatus}");
@@ -70,6 +75,7 @@ namespace NFApp1
 
             // 1. Setup the GPIO pin for the button
             GpioController gpio = new GpioController();
+            
             // Open the pin with an internal pull-up resistor.
             GpioPin buttonPin = gpio.OpenPin(ButtonPin, PinMode.InputPullUp);
             // Set a debounce timeout to filter out noise from the button press.
