@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Threading;
 using nanoFramework.M2Mqtt;
+using nanoFramework.Networking;
 
 namespace NFApp1
 {
@@ -12,7 +13,7 @@ namespace NFApp1
     {
         // The GPIO pin the button is connected to.
         // Connect the other side of the button to GND.
-        private const int ButtonPin = 15;
+        private const int ButtonPin = 25;
 
         // --- Thread-Safe Shared Data ---
         // The object we will use for locking to ensure thread safety.
@@ -23,55 +24,14 @@ namespace NFApp1
         private const string MqttBrokerAddress = "broker.hivemq.com";
         private const string MqttTopic = "device/button/count";
 
-        private const string WifiSsid = "";
-        private const string WifiPassword = "";
+        private const string WifiSsid = "Nghia Dep Trai";
+        private const string WifiPassword = "HoiThangKiaDi";
 
         public static void Main()
         {
             // 0. Connect to WiFi
             Debug.WriteLine("Connecting to WiFi...");
-            WifiAdapter wifi = WifiAdapter.FindAllAdapters()[0];
-            wifi.AvailableNetworksChanged += AvailableNetworksChangedEventHandler;
-            WifiAvailableNetwork targetNetwork = null;
-            wifi.ScanAsync();
-            Thread.Sleep(2000); // Wait for scan to complete
-            foreach (var net in wifi.NetworkReport.AvailableNetworks)
-            {
-                if (net.Ssid == WifiSsid)
-                {
-                    targetNetwork = net;
-                    break;
-                }
-            }
-            if (targetNetwork == null)
-            {
-                Debug.WriteLine("Target WiFi network not found!");
-                return;
-            }
-            var result = wifi.Connect(targetNetwork, WifiReconnectionKind.Automatic, WifiPassword);
-            if (result.ConnectionStatus != WifiConnectionStatus.Success)
-            {
-                Debug.WriteLine($"WiFi connection failed: {result.ConnectionStatus}");
-                return;
-            }
-            Debug.WriteLine("WiFi connected.");
-
-            // Get MAC address
-            string macAddress = null;
-            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 && ni.IPv4Address != null)
-                {
-                    macAddress = BitConverter.ToString(ni.PhysicalAddress);
-                    break;
-                }
-            }
-            if (macAddress == null)
-            {
-                Debug.WriteLine("No active WiFi interface found!");
-                return;
-            }
-            Debug.WriteLine($"Device MAC address: {macAddress}");
+            ConnectToWifi();
 
             // 1. Setup the GPIO pin for the button
             GpioController gpio = new GpioController();
@@ -86,7 +46,7 @@ namespace NFApp1
             Debug.WriteLine("GPIO Interrupt setup complete. Ready for button presses.");
 
             // Pass MAC address to MQTT thread
-            Thread mqttThread = new Thread(() => MqttPublisherThread(macAddress));
+            Thread mqttThread = new Thread(() => MqttPublisherThread("sa"));
             mqttThread.Start();
 
             // 3. Keep the main application thread alive indefinitely
@@ -162,6 +122,28 @@ namespace NFApp1
         private static void Client_MqttMsgSubscribedHandler(object sender, nanoFramework.M2Mqtt.Messages.MqttMsgSubscribedEventArgs e)
         {
             // Optionally handle subscription event
+        }
+
+        public static bool ConnectToWifi()
+        {
+
+            // Connect the ESP32 Device to the Wi-Fi and check the connection...
+            Debug.WriteLine("Program Started, connecting to WiFi.");
+
+            CancellationTokenSource cs = new(60000);
+            var success = WifiNetworkHelper.Reconnect(requiresDateTime: true, token: cs.Token);
+
+            if (!success)
+            {
+                Debug.WriteLine($"Can't connect to wifi: {WifiNetworkHelper.Status}");
+                if (WifiNetworkHelper.HelperException != null)
+                {
+                    Debug.WriteLine($"NetworkHelper.ConnectionError.Exception");
+                }
+            }
+
+            Debug.WriteLine($"Date and time is now {DateTime.UtcNow}");
+            return success;
         }
     }
 }
